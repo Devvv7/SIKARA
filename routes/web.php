@@ -1,11 +1,11 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\BarangController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\TransaksiMasukController;
-use App\Http\Controllers\TransaksiKeluarController;
 use App\Http\Controllers\LaporanController;
+use App\Http\Controllers\TransaksiKeluarController;
+use App\Http\Controllers\TransaksiMasukController;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return redirect()->route('dashboard');

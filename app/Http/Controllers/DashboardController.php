@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Barang;
-use App\Models\TransaksiMasuk;
 use App\Models\TransaksiKeluar;
+use App\Models\TransaksiMasuk;
 
 class DashboardController extends Controller
 {

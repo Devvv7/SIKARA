@@ -54,9 +54,8 @@ class TransaksiKeluarController extends Controller
             // Periksa apakah stok mencukupi.
             if ($barang->stok < $validated['jumlah_keluar']) {
                 throw ValidationException::withMessages([
-                    'jumlah_keluar' =>
-                        'Stok barang tidak mencukupi. Stok tersedia: '
-                        . $barang->stok,
+                    'jumlah_keluar' => 'Stok barang tidak mencukupi. Stok tersedia: '
+                        .$barang->stok,
                 ]);
             }
 

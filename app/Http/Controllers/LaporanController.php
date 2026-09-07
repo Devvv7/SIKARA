@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Barang;
-use App\Models\TransaksiMasuk;
 use App\Models\TransaksiKeluar;
-use Illuminate\Http\Request;
+use App\Models\TransaksiMasuk;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\Request;
 
 class LaporanController extends Controller
 {
@@ -88,7 +88,7 @@ class LaporanController extends Controller
 
             $kodeBarang = $transaksi['kode_barang'];
 
-            if (!isset($saldoBarang[$kodeBarang])) {
+            if (! isset($saldoBarang[$kodeBarang])) {
                 $saldoBarang[$kodeBarang] = 0;
             }
 
@@ -228,7 +228,7 @@ class LaporanController extends Controller
 
                 $kodeBarang = $transaksi['kode_barang'];
 
-                if (!isset($saldoBarang[$kodeBarang])) {
+                if (! isset($saldoBarang[$kodeBarang])) {
                     $saldoBarang[$kodeBarang] = 0;
                 }
 
@@ -375,11 +375,12 @@ class LaporanController extends Controller
             'kartuStok'
         ));
     }
+
     public function kartuStokPdf(Request $request)
     {
         $kodeBarang = $request->input('kode_barang');
 
-        if (!$kodeBarang) {
+        if (! $kodeBarang) {
             return redirect()
                 ->route('laporan.kartu-stok')
                 ->with('error', 'Silakan pilih barang terlebih dahulu.');
@@ -439,7 +440,7 @@ class LaporanController extends Controller
         );
 
         return $pdf->download(
-            'kartu-stok-' . $barang->kode_barang . '.pdf'
+            'kartu-stok-'.$barang->kode_barang.'.pdf'
         );
     }
 }

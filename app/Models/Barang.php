@@ -12,7 +12,7 @@ class Barang extends Model
     protected $primaryKey = 'kode_barang';
 
     public $incrementing = false;
-    
+
     protected $keyType = 'string';
 
     protected $fillable = [
