@@ -5,12 +5,36 @@ namespace App\Http\Controllers;
 use App\Models\Barang;
 use App\Models\DetailBarang;
 use App\Models\TransaksiMasuk;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class TransaksiMasukController extends Controller
 {
-    public function store(Request $request)
+    public function index(): View
+    {
+        $barang = Barang::orderBy('nama_barang')->get();
+
+        $transaksiMasuk = TransaksiMasuk::with('barang')
+            ->orderByDesc('tanggal_masuk')
+            ->orderByDesc('id')
+            ->get();
+
+        return view('transaksi-masuk', compact(
+            'barang',
+            'transaksiMasuk'
+        ));
+    }
+
+    public function create(): View
+    {
+        $barang = Barang::orderBy('nama_barang')->get();
+
+        return view('transaksi-masuk.create', compact('barang'));
+    }
+
+    public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'tanggal_masuk' => ['required', 'date'],
@@ -20,12 +44,10 @@ class TransaksiMasukController extends Controller
             'harga_satuan' => ['required', 'numeric', 'min:0'],
         ]);
 
-        DB::transaction(function () use ($validated) {
+        DB::transaction(function () use ($validated): void {
 
-            // 1. Simpan transaksi masuk
             TransaksiMasuk::create($validated);
 
-            // 2. Buat batch baru pada detail barang
             DetailBarang::create([
                 'tanggal_masuk' => $validated['tanggal_masuk'],
                 'harga' => $validated['harga_satuan'],
@@ -33,8 +55,10 @@ class TransaksiMasukController extends Controller
                 'kode_barang' => $validated['kode_barang'],
             ]);
 
-            // 3. Tambahkan stok barang
-            $barang = Barang::findOrFail($validated['kode_barang']);
+            /** @var Barang $barang */
+            $barang = Barang::findOrFail(
+                $validated['kode_barang']
+            );
 
             $barang->increment(
                 'stok',
@@ -48,24 +72,5 @@ class TransaksiMasukController extends Controller
                 'success',
                 'Transaksi masuk berhasil disimpan.'
             );
-    }
-
-    public function create()
-    {
-        $barang = Barang::orderBy('nama_barang')->get();
-
-        return view('transaksi-masuk.create', compact('barang'));
-    }
-
-    public function index()
-    {
-        $transaksiMasuk = TransaksiMasuk::with('barang')
-            ->orderByDesc('tanggal_masuk')
-            ->orderByDesc('id')
-            ->get();
-
-        return view('transaksi-masuk', compact(
-            'transaksiMasuk'
-        ));
     }
 }

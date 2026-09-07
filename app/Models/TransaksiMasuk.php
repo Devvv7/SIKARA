@@ -19,12 +19,18 @@ class TransaksiMasuk extends Model
 
     protected $casts = [
         'tanggal_masuk' => 'date',
-        'jumlah_masuk' => 'integer',
         'harga_satuan' => 'decimal:2',
     ];
 
+    /**
+     * @return BelongsTo<Barang, $this>
+     */
     public function barang(): BelongsTo
     {
-        return $this->belongsTo(Barang::class, 'kode_barang', 'kode_barang');
+        return $this->belongsTo(
+            Barang::class,
+            'kode_barang',
+            'kode_barang'
+        );
     }
 }

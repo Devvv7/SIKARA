@@ -5,13 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\Barang;
 use App\Models\DetailBarang;
 use App\Models\TransaksiKeluar;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class TransaksiKeluarController extends Controller
 {
-    public function index()
+    public function index(): View
     {
         $barang = Barang::orderBy('nama_barang')->get();
 
@@ -26,14 +28,14 @@ class TransaksiKeluarController extends Controller
         ));
     }
 
-    public function create()
+    public function create(): View
     {
         $barang = Barang::orderBy('nama_barang')->get();
 
         return view('transaksi-keluar.create', compact('barang'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'tanggal_keluar' => ['required', 'date'],
@@ -44,6 +46,7 @@ class TransaksiKeluarController extends Controller
 
         DB::transaction(function () use ($validated) {
 
+            /** @var Barang $barang */
             $barang = Barang::where(
                 'kode_barang',
                 $validated['kode_barang']
@@ -74,7 +77,6 @@ class TransaksiKeluarController extends Controller
                 ->get();
 
             foreach ($detailBarang as $detail) {
-
                 if ($jumlahKeluar <= 0) {
                     break;
                 }

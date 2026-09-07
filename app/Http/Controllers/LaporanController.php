@@ -6,11 +6,13 @@ use App\Models\Barang;
 use App\Models\TransaksiKeluar;
 use App\Models\TransaksiMasuk;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 class LaporanController extends Controller
 {
-    public function transaksi(Request $request)
+    public function transaksi(Request $request): View
     {
         $barang = Barang::orderBy('nama_barang')->get();
 
@@ -27,11 +29,14 @@ class LaporanController extends Controller
 
         $transaksiMasuk = TransaksiMasuk::with('barang')
             ->get()
-            ->map(function ($transaksi) {
+            ->map(function (TransaksiMasuk $transaksi) {
+                /** @var Barang $barang */
+                $barang = $transaksi->barang;
+
                 return [
                     'tanggal' => $transaksi->tanggal_masuk,
                     'kode_barang' => $transaksi->kode_barang,
-                    'nama_barang' => $transaksi->barang->nama_barang,
+                    'nama_barang' => $barang->nama_barang,
                     'jenis' => 'Masuk',
                     'jumlah' => $transaksi->jumlah_masuk,
                     'harga_satuan' => $transaksi->harga_satuan,
@@ -48,11 +53,14 @@ class LaporanController extends Controller
 
         $transaksiKeluar = TransaksiKeluar::with('barang')
             ->get()
-            ->map(function ($transaksi) {
+            ->map(function (TransaksiKeluar $transaksi) {
+                /** @var Barang $barang */
+                $barang = $transaksi->barang;
+
                 return [
                     'tanggal' => $transaksi->tanggal_keluar,
                     'kode_barang' => $transaksi->kode_barang,
-                    'nama_barang' => $transaksi->barang->nama_barang,
+                    'nama_barang' => $barang->nama_barang,
                     'jenis' => 'Keluar',
                     'jumlah' => $transaksi->jumlah_keluar,
                     'harga_satuan' => null,
@@ -84,24 +92,25 @@ class LaporanController extends Controller
 
         $saldoBarang = [];
 
-        $semuaTransaksi = $semuaTransaksi->map(function ($transaksi) use (&$saldoBarang) {
+        $semuaTransaksi = $semuaTransaksi->map(
+            function (array $transaksi) use (&$saldoBarang) {
+                $kodeBarang = $transaksi['kode_barang'];
 
-            $kodeBarang = $transaksi['kode_barang'];
+                if (! isset($saldoBarang[$kodeBarang])) {
+                    $saldoBarang[$kodeBarang] = 0;
+                }
 
-            if (! isset($saldoBarang[$kodeBarang])) {
-                $saldoBarang[$kodeBarang] = 0;
+                if ($transaksi['jenis'] === 'Masuk') {
+                    $saldoBarang[$kodeBarang] += $transaksi['jumlah'];
+                } else {
+                    $saldoBarang[$kodeBarang] -= $transaksi['jumlah'];
+                }
+
+                $transaksi['saldo'] = $saldoBarang[$kodeBarang];
+
+                return $transaksi;
             }
-
-            if ($transaksi['jenis'] === 'Masuk') {
-                $saldoBarang[$kodeBarang] += $transaksi['jumlah'];
-            } else {
-                $saldoBarang[$kodeBarang] -= $transaksi['jumlah'];
-            }
-
-            $transaksi['saldo'] = $saldoBarang[$kodeBarang];
-
-            return $transaksi;
-        });
+        );
 
         /*
         |--------------------------------------------------------------------------
@@ -110,43 +119,44 @@ class LaporanController extends Controller
         */
 
         $transaksi = $semuaTransaksi
-            ->filter(function ($transaksi) use (
-                $tanggalMulai,
-                $tanggalAkhir,
-                $kodeBarang,
-                $jenis
-            ) {
-
-                if (
-                    $tanggalMulai &&
-                    $transaksi['tanggal']->format('Y-m-d') < $tanggalMulai
+            ->filter(
+                function (array $transaksi) use (
+                    $tanggalMulai,
+                    $tanggalAkhir,
+                    $kodeBarang,
+                    $jenis
                 ) {
-                    return false;
-                }
+                    if (
+                        $tanggalMulai &&
+                        $transaksi['tanggal']->format('Y-m-d') < $tanggalMulai
+                    ) {
+                        return false;
+                    }
 
-                if (
-                    $tanggalAkhir &&
-                    $transaksi['tanggal']->format('Y-m-d') > $tanggalAkhir
-                ) {
-                    return false;
-                }
+                    if (
+                        $tanggalAkhir &&
+                        $transaksi['tanggal']->format('Y-m-d') > $tanggalAkhir
+                    ) {
+                        return false;
+                    }
 
-                if (
-                    $kodeBarang &&
-                    $transaksi['kode_barang'] !== $kodeBarang
-                ) {
-                    return false;
-                }
+                    if (
+                        $kodeBarang &&
+                        $transaksi['kode_barang'] !== $kodeBarang
+                    ) {
+                        return false;
+                    }
 
-                if (
-                    $jenis &&
-                    $transaksi['jenis'] !== $jenis
-                ) {
-                    return false;
-                }
+                    if (
+                        $jenis &&
+                        $transaksi['jenis'] !== $jenis
+                    ) {
+                        return false;
+                    }
 
-                return true;
-            })
+                    return true;
+                }
+            )
             ->values();
 
         /*
@@ -175,7 +185,7 @@ class LaporanController extends Controller
         ));
     }
 
-    public function transaksiPdf(Request $request)
+    public function transaksiPdf(Request $request): Response
     {
         $tanggalMulai = $request->input('tanggal_mulai');
         $tanggalAkhir = $request->input('tanggal_akhir');
@@ -184,11 +194,14 @@ class LaporanController extends Controller
 
         $transaksiMasuk = TransaksiMasuk::with('barang')
             ->get()
-            ->map(function ($transaksi) {
+            ->map(function (TransaksiMasuk $transaksi) {
+                /** @var Barang $barang */
+                $barang = $transaksi->barang;
+
                 return [
                     'tanggal' => $transaksi->tanggal_masuk,
                     'kode_barang' => $transaksi->kode_barang,
-                    'nama_barang' => $transaksi->barang->nama_barang,
+                    'nama_barang' => $barang->nama_barang,
                     'jenis' => 'Masuk',
                     'jumlah' => $transaksi->jumlah_masuk,
                     'harga_satuan' => $transaksi->harga_satuan,
@@ -199,11 +212,14 @@ class LaporanController extends Controller
 
         $transaksiKeluar = TransaksiKeluar::with('barang')
             ->get()
-            ->map(function ($transaksi) {
+            ->map(function (TransaksiKeluar $transaksi) {
+                /** @var Barang $barang */
+                $barang = $transaksi->barang;
+
                 return [
                     'tanggal' => $transaksi->tanggal_keluar,
                     'kode_barang' => $transaksi->kode_barang,
-                    'nama_barang' => $transaksi->barang->nama_barang,
+                    'nama_barang' => $barang->nama_barang,
                     'jenis' => 'Keluar',
                     'jumlah' => $transaksi->jumlah_keluar,
                     'harga_satuan' => null,
@@ -224,8 +240,7 @@ class LaporanController extends Controller
         $saldoBarang = [];
 
         $semuaTransaksi = $semuaTransaksi->map(
-            function ($transaksi) use (&$saldoBarang) {
-
+            function (array $transaksi) use (&$saldoBarang) {
                 $kodeBarang = $transaksi['kode_barang'];
 
                 if (! isset($saldoBarang[$kodeBarang])) {
@@ -245,43 +260,44 @@ class LaporanController extends Controller
         );
 
         $transaksi = $semuaTransaksi
-            ->filter(function ($transaksi) use (
-                $tanggalMulai,
-                $tanggalAkhir,
-                $kodeBarang,
-                $jenis
-            ) {
-
-                if (
-                    $tanggalMulai &&
-                    $transaksi['tanggal']->format('Y-m-d') < $tanggalMulai
+            ->filter(
+                function (array $transaksi) use (
+                    $tanggalMulai,
+                    $tanggalAkhir,
+                    $kodeBarang,
+                    $jenis
                 ) {
-                    return false;
-                }
+                    if (
+                        $tanggalMulai &&
+                        $transaksi['tanggal']->format('Y-m-d') < $tanggalMulai
+                    ) {
+                        return false;
+                    }
 
-                if (
-                    $tanggalAkhir &&
-                    $transaksi['tanggal']->format('Y-m-d') > $tanggalAkhir
-                ) {
-                    return false;
-                }
+                    if (
+                        $tanggalAkhir &&
+                        $transaksi['tanggal']->format('Y-m-d') > $tanggalAkhir
+                    ) {
+                        return false;
+                    }
 
-                if (
-                    $kodeBarang &&
-                    $transaksi['kode_barang'] !== $kodeBarang
-                ) {
-                    return false;
-                }
+                    if (
+                        $kodeBarang &&
+                        $transaksi['kode_barang'] !== $kodeBarang
+                    ) {
+                        return false;
+                    }
 
-                if (
-                    $jenis &&
-                    $transaksi['jenis'] !== $jenis
-                ) {
-                    return false;
-                }
+                    if (
+                        $jenis &&
+                        $transaksi['jenis'] !== $jenis
+                    ) {
+                        return false;
+                    }
 
-                return true;
-            })
+                    return true;
+                }
+            )
             ->values();
 
         $totalMasuk = $transaksi
@@ -310,7 +326,7 @@ class LaporanController extends Controller
         return $pdf->download('laporan-transaksi.pdf');
     }
 
-    public function kartuStok(Request $request)
+    public function kartuStok(Request $request): View
     {
         $barang = Barang::orderBy('nama_barang')->get();
 
@@ -321,7 +337,7 @@ class LaporanController extends Controller
         if ($kodeBarang) {
             $transaksiMasuk = TransaksiMasuk::where('kode_barang', $kodeBarang)
                 ->get()
-                ->map(function ($transaksi) {
+                ->map(function (TransaksiMasuk $transaksi) {
                     return [
                         'tanggal' => $transaksi->tanggal_masuk,
                         'keterangan' => $transaksi->keterangan,
@@ -333,7 +349,7 @@ class LaporanController extends Controller
 
             $transaksiKeluar = TransaksiKeluar::where('kode_barang', $kodeBarang)
                 ->get()
-                ->map(function ($transaksi) {
+                ->map(function (TransaksiKeluar $transaksi) {
                     return [
                         'tanggal' => $transaksi->tanggal_keluar,
                         'keterangan' => $transaksi->keterangan,
@@ -353,17 +369,19 @@ class LaporanController extends Controller
 
             $saldo = 0;
 
-            $kartuStok = $semuaTransaksi->map(function ($transaksi) use (&$saldo) {
+            $kartuStok = $semuaTransaksi->map(
+                function (array $transaksi) use (&$saldo) {
+                    $saldo += $transaksi['masuk'];
+                    $saldo -= $transaksi['keluar'];
 
-                $saldo += $transaksi['masuk'];
-                $saldo -= $transaksi['keluar'];
+                    $transaksi['saldo'] = $saldo;
 
-                $transaksi['saldo'] = $saldo;
-
-                return $transaksi;
-            });
+                    return $transaksi;
+                }
+            );
         }
 
+        /** @var Barang|null $barangTerpilih */
         $barangTerpilih = $kodeBarang
             ? Barang::findOrFail($kodeBarang)
             : null;
@@ -376,7 +394,7 @@ class LaporanController extends Controller
         ));
     }
 
-    public function kartuStokPdf(Request $request)
+    public function kartuStokPdf(Request $request): Response
     {
         $kodeBarang = $request->input('kode_barang');
 
@@ -386,11 +404,12 @@ class LaporanController extends Controller
                 ->with('error', 'Silakan pilih barang terlebih dahulu.');
         }
 
+        /** @var Barang $barang */
         $barang = Barang::findOrFail($kodeBarang);
 
         $transaksiMasuk = TransaksiMasuk::where('kode_barang', $kodeBarang)
             ->get()
-            ->map(function ($transaksi) {
+            ->map(function (TransaksiMasuk $transaksi) {
                 return [
                     'tanggal' => $transaksi->tanggal_masuk,
                     'keterangan' => $transaksi->keterangan,
@@ -402,7 +421,7 @@ class LaporanController extends Controller
 
         $transaksiKeluar = TransaksiKeluar::where('kode_barang', $kodeBarang)
             ->get()
-            ->map(function ($transaksi) {
+            ->map(function (TransaksiKeluar $transaksi) {
                 return [
                     'tanggal' => $transaksi->tanggal_keluar,
                     'keterangan' => $transaksi->keterangan,
@@ -422,14 +441,16 @@ class LaporanController extends Controller
 
         $saldo = 0;
 
-        $kartuStok = $kartuStok->map(function ($transaksi) use (&$saldo) {
-            $saldo += $transaksi['masuk'];
-            $saldo -= $transaksi['keluar'];
+        $kartuStok = $kartuStok->map(
+            function (array $transaksi) use (&$saldo) {
+                $saldo += $transaksi['masuk'];
+                $saldo -= $transaksi['keluar'];
 
-            $transaksi['saldo'] = $saldo;
+                $transaksi['saldo'] = $saldo;
 
-            return $transaksi;
-        });
+                return $transaksi;
+            }
+        );
 
         $pdf = Pdf::loadView(
             'laporan.kartu-stok-pdf',

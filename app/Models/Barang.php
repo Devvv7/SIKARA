@@ -22,18 +22,39 @@ class Barang extends Model
         'stok',
     ];
 
+    /**
+     * @return HasMany<DetailBarang, $this>
+     */
     public function detailBarang(): HasMany
     {
-        return $this->hasMany(DetailBarang::class, 'kode_barang', 'kode_barang');
+        return $this->hasMany(
+            DetailBarang::class,
+            'kode_barang',
+            'kode_barang'
+        );
     }
 
+    /**
+     * @return HasMany<TransaksiMasuk, $this>
+     */
     public function transaksiMasuk(): HasMany
     {
-        return $this->hasMany(TransaksiMasuk::class, 'kode_barang', 'kode_barang');
+        return $this->hasMany(
+            TransaksiMasuk::class,
+            'kode_barang',
+            'kode_barang'
+        );
     }
 
+    /**
+     * @return HasMany<TransaksiKeluar, $this>
+     */
     public function transaksiKeluar(): HasMany
     {
-        return $this->hasMany(TransaksiKeluar::class, 'kode_barang', 'kode_barang');
+        return $this->hasMany(
+            TransaksiKeluar::class,
+            'kode_barang',
+            'kode_barang'
+        );
     }
 }

@@ -3,23 +3,25 @@
 namespace App\Http\Controllers;
 
 use App\Models\Barang;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class BarangController extends Controller
 {
-    public function index()
+    public function index(): View
     {
         $barang = Barang::orderBy('nama_barang')->get();
 
         return view('barang.index', compact('barang'));
     }
 
-    public function create()
+    public function create(): View
     {
         return view('barang.create');
     }
 
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'kode_barang' => ['required', 'string', 'max:255', 'unique:barang,kode_barang'],
@@ -39,14 +41,14 @@ class BarangController extends Controller
             ->with('success', 'Barang berhasil ditambahkan.');
     }
 
-    public function edit(string $kode_barang)
+    public function edit(string $kode_barang): View
     {
         $barang = Barang::findOrFail($kode_barang);
 
         return view('barang.edit', compact('barang'));
     }
 
-    public function show(string $kode_barang)
+    public function show(string $kode_barang): View
     {
         $barang = Barang::findOrFail($kode_barang);
 
@@ -61,8 +63,10 @@ class BarangController extends Controller
         ));
     }
 
-    public function update(Request $request, string $kode_barang)
-    {
+    public function update(
+        Request $request,
+        string $kode_barang
+    ): RedirectResponse {
         $barang = Barang::findOrFail($kode_barang);
 
         $validated = $request->validate([
@@ -77,7 +81,7 @@ class BarangController extends Controller
             ->with('success', 'Barang berhasil diperbarui.');
     }
 
-    public function destroy(string $kode_barang)
+    public function destroy(string $kode_barang): RedirectResponse
     {
         $barang = Barang::findOrFail($kode_barang);
 

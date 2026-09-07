@@ -5,10 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Barang;
 use App\Models\TransaksiKeluar;
 use App\Models\TransaksiMasuk;
+use Illuminate\Contracts\View\View;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(): View
     {
         $totalBarang = Barang::count();
 

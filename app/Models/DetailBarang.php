@@ -19,11 +19,17 @@ class DetailBarang extends Model
     protected $casts = [
         'tanggal_masuk' => 'date',
         'harga' => 'decimal:2',
-        'stok' => 'integer',
     ];
 
+    /**
+     * @return BelongsTo<Barang, $this>
+     */
     public function barang(): BelongsTo
     {
-        return $this->belongsTo(Barang::class, 'kode_barang', 'kode_barang');
+        return $this->belongsTo(
+            Barang::class,
+            'kode_barang',
+            'kode_barang'
+        );
     }
 }

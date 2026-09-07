@@ -20,8 +20,15 @@ class TransaksiKeluar extends Model
         'tanggal_keluar' => 'date',
     ];
 
+    /**
+     * @return BelongsTo<Barang, $this>
+     */
     public function barang(): BelongsTo
     {
-        return $this->belongsTo(Barang::class, 'kode_barang', 'kode_barang');
+        return $this->belongsTo(
+            Barang::class,
+            'kode_barang',
+            'kode_barang'
+        );
     }
 }
