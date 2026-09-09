@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
             TransaksiMasukSeeder::class,
             DetailBarangSeeder::class,
             AdminUserSeeder::class,
+            TransaksiKeluarSeeder::class,
         ]);
     }
 }

@@ -50,100 +50,244 @@
 
         .data th {
             text-align: center;
+            background-color: #f2f2f2;
         }
 
         .angka {
             text-align: center;
+        }
+
+        .total {
+            font-weight: bold;
+            background-color: #f2f2f2;
+        }
+
+        .total-label {
+            text-align: right;
         }
     </style>
 </head>
 
 <body>
 
+    {{-- Header --}}
     <div class="header">
-        <h1>KARTU STOK</h1>
-        <p>SIKARA - Sistem Inventaris Kantor Imigrasi Ngurah Rai</p>
+
+        <h1>
+            KARTU STOK
+        </h1>
+
+        <p>
+            SIKARA - Sistem Inventaris Kantor Imigrasi Ngurah Rai
+        </p>
+
     </div>
 
+
+    {{-- Informasi Barang --}}
     <div class="informasi">
+
         <table>
-            <tr>
-                <td width="120"><strong>Kode Barang</strong></td>
-                <td>: {{ $barang->kode_barang }}</td>
-            </tr>
 
             <tr>
-                <td><strong>Nama Barang</strong></td>
-                <td>: {{ $barang->nama_barang }}</td>
+                <td width="120">
+                    <strong>Kode Barang</strong>
+                </td>
+
+                <td>
+                    : {{ $barang->kode_barang }}
+                </td>
             </tr>
 
-            <tr>
-                <td><strong>Satuan</strong></td>
-                <td>: {{ $barang->satuan }}</td>
-            </tr>
 
             <tr>
-                <td><strong>Stok Saat Ini</strong></td>
-                <td>: {{ $barang->stok }}</td>
+                <td>
+                    <strong>Nama Barang</strong>
+                </td>
+
+                <td>
+                    : {{ $barang->nama_barang }}
+                </td>
             </tr>
+
+
+            <tr>
+                <td>
+                    <strong>Satuan</strong>
+                </td>
+
+                <td>
+                    : {{ $barang->satuan }}
+                </td>
+            </tr>
+
+
+            <tr>
+                <td>
+                    <strong>Stok Saat Ini</strong>
+                </td>
+
+                <td>
+                    : {{ $barang->stok }}
+                </td>
+            </tr>
+
         </table>
+
     </div>
 
+
+    {{-- Tabel Kartu Stok --}}
     <table class="data">
+
         <thead>
+
             <tr>
-                <th width="40">No</th>
-                <th width="80">Tanggal</th>
-                <th>Keterangan</th>
-                <th width="60">Masuk</th>
-                <th width="60">Keluar</th>
-                <th width="60">Saldo</th>
+
+                <th width="40">
+                    No
+                </th>
+
+                <th width="80">
+                    Tanggal
+                </th>
+
+                <th>
+                    Keterangan
+                </th>
+
+                <th width="60">
+                    Masuk
+                </th>
+
+                <th width="60">
+                    Keluar
+                </th>
+
+                <th width="60">
+                    Saldo
+                </th>
+
             </tr>
+
         </thead>
 
+
         <tbody>
+
             @forelse ($kartuStok as $item)
+
                 <tr>
+
+                    {{-- No --}}
                     <td class="angka">
                         {{ $loop->iteration }}
                     </td>
 
+
+                    {{-- Tanggal --}}
                     <td class="angka">
                         {{ $item['tanggal']->format('d-m-Y') }}
                     </td>
 
+
+                    {{-- Keterangan --}}
                     <td>
                         {{ $item['keterangan'] }}
                     </td>
 
+
+                    {{-- Masuk --}}
                     <td class="angka">
+
                         @if ($item['masuk'] > 0)
+
                             {{ $item['masuk'] }}
+
                         @else
+
                             -
+
                         @endif
+
                     </td>
 
+
+                    {{-- Keluar --}}
                     <td class="angka">
+
                         @if ($item['keluar'] > 0)
+
                             {{ $item['keluar'] }}
+
                         @else
+
                             -
+
                         @endif
+
                     </td>
 
+
+                    {{-- Saldo --}}
                     <td class="angka">
                         {{ $item['saldo'] }}
                     </td>
+
                 </tr>
+
             @empty
+
                 <tr>
-                    <td colspan="6" class="angka">
+
+                    <td
+                        colspan="6"
+                        class="angka"
+                    >
                         Belum ada transaksi untuk barang ini.
                     </td>
+
                 </tr>
+
             @endforelse
+
+
+            {{-- Total --}}
+            @if ($kartuStok->count() > 0)
+
+                <tr class="total">
+
+                    <td
+                        colspan="3"
+                        class="total-label"
+                    >
+                        Total
+                    </td>
+
+
+                    {{-- Total Masuk --}}
+                    <td class="angka">
+                        {{ $totalMasuk }}
+                    </td>
+
+
+                    {{-- Total Keluar --}}
+                    <td class="angka">
+                        {{ $totalKeluar }}
+                    </td>
+
+
+                    {{-- Saldo Akhir --}}
+                    <td class="angka">
+                        {{ $totalSaldo }}
+                    </td>
+
+                </tr>
+
+            @endif
+
         </tbody>
+
     </table>
 
 </body>

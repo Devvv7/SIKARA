@@ -20,6 +20,7 @@ class LaporanController extends Controller
         $tanggalAkhir = $request->input('tanggal_akhir');
         $kodeBarang = $request->input('kode_barang');
         $jenis = $request->input('jenis');
+        $search = trim((string) $request->input('search', ''));
 
         /*
         |--------------------------------------------------------------------------
@@ -78,6 +79,7 @@ class LaporanController extends Controller
         $semuaTransaksi = $transaksiMasuk
             ->concat($transaksiKeluar)
             ->sortBy([
+                ['kode_barang', 'asc'],
                 ['tanggal', 'asc'],
                 ['jenis', 'asc'],
                 ['id', 'asc'],
@@ -124,8 +126,10 @@ class LaporanController extends Controller
                     $tanggalMulai,
                     $tanggalAkhir,
                     $kodeBarang,
-                    $jenis
+                    $jenis,
+                    $search
                 ) {
+                    // Filter tanggal mulai
                     if (
                         $tanggalMulai &&
                         $transaksi['tanggal']->format('Y-m-d') < $tanggalMulai
@@ -133,6 +137,7 @@ class LaporanController extends Controller
                         return false;
                     }
 
+                    // Filter tanggal akhir
                     if (
                         $tanggalAkhir &&
                         $transaksi['tanggal']->format('Y-m-d') > $tanggalAkhir
@@ -140,6 +145,7 @@ class LaporanController extends Controller
                         return false;
                     }
 
+                    // Filter barang
                     if (
                         $kodeBarang &&
                         $transaksi['kode_barang'] !== $kodeBarang
@@ -147,11 +153,32 @@ class LaporanController extends Controller
                         return false;
                     }
 
+                    // Filter jenis transaksi
                     if (
                         $jenis &&
                         $transaksi['jenis'] !== $jenis
                     ) {
                         return false;
+                    }
+
+                    // Search kode atau nama barang
+                    if ($search !== '') {
+                        $searchLower = strtolower($search);
+
+                        $kodeBarangLower = strtolower(
+                            $transaksi['kode_barang']
+                        );
+
+                        $namaBarangLower = strtolower(
+                            $transaksi['nama_barang']
+                        );
+
+                        if (
+                            ! str_contains($kodeBarangLower, $searchLower) &&
+                            ! str_contains($namaBarangLower, $searchLower)
+                        ) {
+                            return false;
+                        }
                     }
 
                     return true;
@@ -173,6 +200,44 @@ class LaporanController extends Controller
             ->where('jenis', 'Keluar')
             ->sum('jumlah');
 
+        /*
+        |--------------------------------------------------------------------------
+        | Pagination
+        |--------------------------------------------------------------------------
+        |
+        | Pagination dilakukan setelah seluruh proses saldo dan filter selesai.
+        | Hal ini penting agar saldo berjalan tidak berubah menjadi salah.
+        |
+        */
+
+        $perPage = (int) $request->input('per_page', 10);
+
+        $allowedPerPage = [10, 25, 50, 100];
+
+        if (! in_array($perPage, $allowedPerPage)) {
+            $perPage = 10;
+        }
+
+        $currentPage = max(
+            1,
+            (int) $request->input('page', 1)
+        );
+
+        $totalTransaksi = $transaksi->count();
+
+        $transaksi = new \Illuminate\Pagination\LengthAwarePaginator(
+            $transaksi
+                ->forPage($currentPage, $perPage)
+                ->values(),
+            $totalTransaksi,
+            $perPage,
+            $currentPage,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]
+        );
+
         return view('laporan.transaksi', compact(
             'barang',
             'transaksi',
@@ -180,8 +245,10 @@ class LaporanController extends Controller
             'tanggalAkhir',
             'kodeBarang',
             'jenis',
+            'search',
             'totalMasuk',
-            'totalKeluar'
+            'totalKeluar',
+            'perPage'
         ));
     }
 
@@ -191,6 +258,13 @@ class LaporanController extends Controller
         $tanggalAkhir = $request->input('tanggal_akhir');
         $kodeBarang = $request->input('kode_barang');
         $jenis = $request->input('jenis');
+        $search = trim((string) $request->input('search', ''));
+
+        /*
+        |--------------------------------------------------------------------------
+        | Ambil seluruh transaksi masuk
+        |--------------------------------------------------------------------------
+        */
 
         $transaksiMasuk = TransaksiMasuk::with('barang')
             ->get()
@@ -210,6 +284,12 @@ class LaporanController extends Controller
                 ];
             });
 
+        /*
+        |--------------------------------------------------------------------------
+        | Ambil seluruh transaksi keluar
+        |--------------------------------------------------------------------------
+        */
+
         $transaksiKeluar = TransaksiKeluar::with('barang')
             ->get()
             ->map(function (TransaksiKeluar $transaksi) {
@@ -228,14 +308,27 @@ class LaporanController extends Controller
                 ];
             });
 
+        /*
+        |--------------------------------------------------------------------------
+        | Gabungkan transaksi dan urutkan berdasarkan tanggal
+        |--------------------------------------------------------------------------
+        */
+
         $semuaTransaksi = $transaksiMasuk
             ->concat($transaksiKeluar)
             ->sortBy([
+                ['kode_barang', 'asc'],
                 ['tanggal', 'asc'],
                 ['jenis', 'asc'],
                 ['id', 'asc'],
             ])
             ->values();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Hitung saldo stok per barang
+        |--------------------------------------------------------------------------
+        */
 
         $saldoBarang = [];
 
@@ -259,14 +352,22 @@ class LaporanController extends Controller
             }
         );
 
+        /*
+        |--------------------------------------------------------------------------
+        | Terapkan filter laporan
+        |--------------------------------------------------------------------------
+        */
+
         $transaksi = $semuaTransaksi
             ->filter(
                 function (array $transaksi) use (
                     $tanggalMulai,
                     $tanggalAkhir,
                     $kodeBarang,
-                    $jenis
+                    $jenis,
+                    $search
                 ) {
+                    // Filter tanggal mulai
                     if (
                         $tanggalMulai &&
                         $transaksi['tanggal']->format('Y-m-d') < $tanggalMulai
@@ -274,6 +375,7 @@ class LaporanController extends Controller
                         return false;
                     }
 
+                    // Filter tanggal akhir
                     if (
                         $tanggalAkhir &&
                         $transaksi['tanggal']->format('Y-m-d') > $tanggalAkhir
@@ -281,6 +383,7 @@ class LaporanController extends Controller
                         return false;
                     }
 
+                    // Filter barang
                     if (
                         $kodeBarang &&
                         $transaksi['kode_barang'] !== $kodeBarang
@@ -288,6 +391,7 @@ class LaporanController extends Controller
                         return false;
                     }
 
+                    // Filter jenis transaksi
                     if (
                         $jenis &&
                         $transaksi['jenis'] !== $jenis
@@ -295,10 +399,36 @@ class LaporanController extends Controller
                         return false;
                     }
 
+                    // Search kode atau nama barang
+                    if ($search !== '') {
+                        $searchLower = strtolower($search);
+
+                        $kodeBarangLower = strtolower(
+                            $transaksi['kode_barang']
+                        );
+
+                        $namaBarangLower = strtolower(
+                            $transaksi['nama_barang']
+                        );
+
+                        if (
+                            ! str_contains($kodeBarangLower, $searchLower) &&
+                            ! str_contains($namaBarangLower, $searchLower)
+                        ) {
+                            return false;
+                        }
+                    }
+
                     return true;
                 }
             )
             ->values();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Hitung ringkasan transaksi
+        |--------------------------------------------------------------------------
+        */
 
         $totalMasuk = $transaksi
             ->where('jenis', 'Masuk')
@@ -308,6 +438,12 @@ class LaporanController extends Controller
             ->where('jenis', 'Keluar')
             ->sum('jumlah');
 
+        /*
+        |--------------------------------------------------------------------------
+        | Generate PDF
+        |--------------------------------------------------------------------------
+        */
+
         $pdf = Pdf::loadView(
             'laporan.transaksi-pdf',
             compact(
@@ -316,6 +452,7 @@ class LaporanController extends Controller
                 'tanggalAkhir',
                 'kodeBarang',
                 'jenis',
+                'search',
                 'totalMasuk',
                 'totalKeluar'
             )
@@ -381,6 +518,54 @@ class LaporanController extends Controller
             );
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | Hitung Total Kartu Stok
+        |--------------------------------------------------------------------------
+        |
+        | Perhitungan dilakukan sebelum pagination agar total mencakup
+        | seluruh transaksi, bukan hanya transaksi pada halaman aktif.
+        |
+        */
+
+        $totalMasuk = $kartuStok->sum('masuk');
+        $totalKeluar = $kartuStok->sum('keluar');
+        $totalSaldo = $totalMasuk - $totalKeluar;
+
+        /*
+        |--------------------------------------------------------------------------
+        | Pagination Kartu Stok
+        |--------------------------------------------------------------------------
+        */
+
+        $perPage = (int) $request->input('per_page', 10);
+
+        $allowedPerPage = [10, 25, 50, 100];
+
+        if (! in_array($perPage, $allowedPerPage)) {
+            $perPage = 10;
+        }
+
+        $currentPage = max(
+            1,
+            (int) $request->input('page', 1)
+        );
+
+        $totalKartuStok = $kartuStok->count();
+
+        $kartuStok = new \Illuminate\Pagination\LengthAwarePaginator(
+            $kartuStok
+                ->forPage($currentPage, $perPage)
+                ->values(),
+            $totalKartuStok,
+            $perPage,
+            $currentPage,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]
+        );
+
         /** @var Barang|null $barangTerpilih */
         $barangTerpilih = $kodeBarang
             ? Barang::findOrFail($kodeBarang)
@@ -390,7 +575,11 @@ class LaporanController extends Controller
             'barang',
             'kodeBarang',
             'barangTerpilih',
-            'kartuStok'
+            'kartuStok',
+            'perPage',
+            'totalMasuk',
+            'totalKeluar',
+            'totalSaldo'
         ));
     }
 
@@ -439,6 +628,12 @@ class LaporanController extends Controller
             ])
             ->values();
 
+        /*
+        |--------------------------------------------------------------------------
+        | Hitung Saldo Berjalan
+        |--------------------------------------------------------------------------
+        */
+
         $saldo = 0;
 
         $kartuStok = $kartuStok->map(
@@ -452,11 +647,34 @@ class LaporanController extends Controller
             }
         );
 
+
+        /*
+        |--------------------------------------------------------------------------
+        | Hitung Total
+        |--------------------------------------------------------------------------
+        */
+
+        $totalMasuk = $kartuStok->sum('masuk');
+
+        $totalKeluar = $kartuStok->sum('keluar');
+
+        $totalSaldo = $totalMasuk - $totalKeluar;
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Generate PDF
+        |--------------------------------------------------------------------------
+        */
+
         $pdf = Pdf::loadView(
             'laporan.kartu-stok-pdf',
             compact(
                 'barang',
-                'kartuStok'
+                'kartuStok',
+                'totalMasuk',
+                'totalKeluar',
+                'totalSaldo'
             )
         );
 

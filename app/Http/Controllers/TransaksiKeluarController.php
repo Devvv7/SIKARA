@@ -13,18 +13,32 @@ use Illuminate\Validation\ValidationException;
 
 class TransaksiKeluarController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
+        // Pilihan jumlah data per halaman
+        $perPage = (int) $request->input('per_page', 10);
+
+        // Batasi pilihan yang diperbolehkan
+        $allowedPerPage = [10, 25, 50, 100];
+
+        if (!in_array($perPage, $allowedPerPage)) {
+            $perPage = 10;
+        }
+
+        // Data barang untuk kebutuhan halaman transaksi
         $barang = Barang::orderBy('nama_barang')->get();
 
+        // Data transaksi keluar dengan pagination
         $transaksiKeluar = TransaksiKeluar::with('barang')
             ->orderByDesc('tanggal_keluar')
             ->orderByDesc('id')
-            ->get();
+            ->paginate($perPage)
+            ->withQueryString();
 
         return view('transaksi-keluar', compact(
             'barang',
-            'transaksiKeluar'
+            'transaksiKeluar',
+            'perPage'
         ));
     }
 

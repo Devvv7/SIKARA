@@ -9,11 +9,42 @@ use Illuminate\Http\Request;
 
 class BarangController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $barang = Barang::orderBy('nama_barang')->get();
+        // Jumlah data per halaman
+        $perPage = (int) $request->input('per_page', 10);
 
-        return view('barang.index', compact('barang'));
+        // Batasi pilihan yang diperbolehkan
+        $allowedPerPage = [10, 25, 50, 100];
+
+        if (!in_array($perPage, $allowedPerPage)) {
+            $perPage = 10;
+        }
+
+        // Kata pencarian
+        $search = trim((string) $request->input('search', ''));
+
+        // Query data barang
+        $query = Barang::orderBy('kode_barang');
+
+        // Filter berdasarkan kode atau nama barang
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('kode_barang', 'like', "%{$search}%")
+                    ->orWhere('nama_barang', 'like', "%{$search}%");
+            });
+        }
+
+        // Pagination + pertahankan parameter search dan per_page
+        $barang = $query
+            ->paginate($perPage)
+            ->withQueryString();
+
+        return view('barang.index', compact(
+            'barang',
+            'perPage',
+            'search'
+        ));
     }
 
     public function create(): View
