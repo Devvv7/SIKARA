@@ -20,7 +20,7 @@ class TransaksiMasukController extends Controller
         // Batasi pilihan yang diperbolehkan
         $allowedPerPage = [10, 25, 50, 100];
 
-        if (!in_array($perPage, $allowedPerPage)) {
+        if (! in_array($perPage, $allowedPerPage)) {
             $perPage = 10;
         }
 

@@ -8,6 +8,7 @@ use App\Models\TransaksiMasuk;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Symfony\Component\HttpFoundation\Response;
 
 class LaporanController extends Controller
@@ -225,7 +226,7 @@ class LaporanController extends Controller
 
         $totalTransaksi = $transaksi->count();
 
-        $transaksi = new \Illuminate\Pagination\LengthAwarePaginator(
+        $transaksi = new LengthAwarePaginator(
             $transaksi
                 ->forPage($currentPage, $perPage)
                 ->values(),
@@ -553,7 +554,7 @@ class LaporanController extends Controller
 
         $totalKartuStok = $kartuStok->count();
 
-        $kartuStok = new \Illuminate\Pagination\LengthAwarePaginator(
+        $kartuStok = new LengthAwarePaginator(
             $kartuStok
                 ->forPage($currentPage, $perPage)
                 ->values(),
@@ -647,7 +648,6 @@ class LaporanController extends Controller
             }
         );
 
-
         /*
         |--------------------------------------------------------------------------
         | Hitung Total
@@ -659,7 +659,6 @@ class LaporanController extends Controller
         $totalKeluar = $kartuStok->sum('keluar');
 
         $totalSaldo = $totalMasuk - $totalKeluar;
-
 
         /*
         |--------------------------------------------------------------------------
